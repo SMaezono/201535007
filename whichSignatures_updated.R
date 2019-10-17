@@ -3,8 +3,8 @@ whichSignatures <- function(tumor.ref = NA,
                            signatures.ref = signatures.nature2013, 
                            associated = c(), 
                            signatures.limit = NA, 
-                           # do sensitivity test (0.05, 0.07, etc)
-                           signature.cutoff = 0.05,
+                           # do sensitivity test (0.05,0.07, etc); original 0.06
+                           signature.cutoff = 0.07,
                            contexts.needed = FALSE, 
                            tri.counts.method = "default") {
   

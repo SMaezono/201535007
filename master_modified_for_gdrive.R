@@ -1,6 +1,5 @@
 # master.R
 
-
 # Jiachen Liang
 # 2018
 
@@ -24,6 +23,9 @@
 # and a few other not-so-useful graphs, 
 # and adds differential expression, plus a bit of clean up on global variables
 # All heatmaps are set as red for -1 and green for 1 
+# Sensitivity analyses for 
+  # Threshold for xCell inclusion (xCell enrichment) originally 0.2
+  # Threshold for xCell inclusion (% of samples enriched) 0.2
 ###############################################################################################
 # Initiation
 ###############################################################################################
@@ -102,7 +104,7 @@ rm_onlyNAcol <- function(df) df[,colSums(is.na(df)) != nrow(df)]
 nts <- 15
 
 # Boxplot dimensions
-w <- 15 # width
+w <- 20 # width
 h <- 10 # height
 bpts <- 16 # text size
 
@@ -111,7 +113,7 @@ margins <- c(5,5) # margins for output image
 key <- FALSE # display legend
 skey <- TRUE # symmetric key
 keysize <- 0.1
-fontsize <- 0.9
+fontsize <- 1.0
 hm_w <- 14 # width
 hm_h <- 12 # height
 
@@ -122,7 +124,7 @@ thr <- 0.05
 um <- T
 
 # Restrict to A3 family?
-restrict <- TRUE
+restrict <- FALSE
 
 # Restrict to first 2 PCs?
 restrict_to_PC1_PC2 <- TRUE
@@ -349,6 +351,149 @@ ebp_sign <- function(cancer_index) {
       plot_out2_fxn(new_df2, "2")
       plot_out2_fxn(new_df3, "3")
       plot_out2_fxn(rem_df, "4")
+    } else {
+      new_df <- df[df$genes %in% gene_sig[c(1:20)],]
+      new_df2 <- df[df$genes %in% gene_sig[c(21:40)],]
+      new_df3 <- df[df$genes %in% gene_sig[c(41:60)],]
+      new_df4 <- df[df$genes %in% gene_sig[c(61:80)],]
+      new_df5 <- df[df$genes %in% gene_sig[c(81:100)],]
+      new_df6 <- df[df$genes %in% gene_sig[c(101:120)],]
+      new_df7 <- df[df$genes %in% gene_sig[c(121:140)],]
+      new_df8 <- df[df$genes %in% gene_sig[c(141:160)],]
+      new_df9 <- df[df$genes %in% gene_sig[c(161:180)],]
+      rem_df <- df[df$genes %in% gene_sig[c(181:length(gene_sig))],]
+      plot_out2_fxn(new_df, "1")
+      plot_out2_fxn(new_df2, "2")
+      plot_out2_fxn(new_df3, "3")
+      plot_out2_fxn(new_df4, "4")
+      plot_out2_fxn(new_df5, "5")
+      plot_out2_fxn(new_df6, "6")
+      plot_out2_fxn(new_df7, "7")
+      plot_out2_fxn(new_df8, "8")
+      plot_out2_fxn(new_df9, "9")
+      plot_out2_fxn(rem_df, "10")
+    }
+    
+    # output violin plots 
+    plot_out <- ggplot(df, aes(x = interaction(status, genes), y = values)) +
+      geom_violin(aes(color = status)) + geom_jitter(color = status) +
+      ggtitle(paste('Expression of', name, 'genes in', cancer)) +
+      xlab("Gene") + ylab("mRNA count (log2, normalized)") +
+      scale_color_manual(values = c(Normal = "darkturquoise", Tumour = "deeppink")) +
+      theme_minimal() + theme(text = element_text(size = 16),
+                              axis.text.x = element_text(angle = 45, hjust = 1)) 
+    # free means scales vary across all facets, free_x is across rows and
+    # y is across col (so the bars do not have to be in different position in x)
+    
+    plot_out <- plot_out + facet_grid(.~genes, scales =  "free_x", switch = "both")
+    # remove original x-axis using element_blank()
+    plot_out <- plot_out + theme_minimal() + theme(axis.text.x = element_blank(),
+                                                   axis.ticks.x = element_blank()) 
+    # add sample size
+    plot_out <- plot_out + stat_n_text(angle = 90) 
+    
+    pdf(file = paste(dir_o, 'exp violin plots per signature/', cancer, '_',
+                     name, '.pdf', sep = ''), width = w, height = h)
+    print(plot_out)
+    dev.off()
+    
+    # violin plots by genes in multiple facets 
+    # t.test is parametric and wilcox.test is non-parametric
+    
+    # short.panel.labs if TRUE simlifies labels
+    plot_out2_fxn <- function(df, numberofpages) {
+      # numberofpages = " " for all gene sig in one page,
+      # "1" for first 20 genes, "2" for the next 20 and so on 
+      plot_out2 <- ggpar(ggboxplot(df, x = "status", y = "values", 
+                                   color = "status", 
+                                   palette = c(Normal = "darkturquoise", Tumour = "deeppink"), 
+                                   line.color = "gray", line.size = 0.4, 
+                                   facet.by = "genes", 
+                                   short.panel.labs = TRUE) 
+                         + labs(x = "genes", y =  "mRNA count (log2, normalized)", 
+                                title = paste('Expression of', name, 'genes in', cancer)), 
+                         font.title = c(16, "bold", "black"),
+                         font.x = c(16,"bold", "black"), 
+                         font.y = c(16,"bold", "black"),
+                         xtickslab.rt = 90, 
+                         legend = "right") 
+      
+      # parametric 
+      # use p.format but if the p.signif is used, ns is non-sig and
+      # * means sig p value 
+      plot_out2_1 <- plot_out2 + 
+        stat_compare_means(method = "t.test", label = "p.format",
+                           paired = FALSE, label.x.npc = "centre",
+                           label.y.npc = 0.95) 
+      # add sample size
+      plot_out2_1 <- plot_out2_1 + stat_n_text() 
+      pdf(file = paste(dir_o, 'exp violin plots per signature/', cancer, '_',
+                       name, 'ttest', numberofpages, '.pdf', sep = ''), 
+          width = w, height = h)
+      print(plot_out2_1)
+      dev.off()
+      
+      # non-parametric
+      plot_out2_2 <- plot_out2 + 
+        stat_compare_means(method = "wilcox.test", label = "p.format",
+                           paired = FALSE, label.x.npc = "centre", 
+                           label.y.npc = 0.95)
+      plot_out2_2 <- plot_out2_2 + stat_n_text() 
+      print(plot_out2_2)
+      pdf(file = paste(dir_o, 'exp violin plots per signature/', cancer, '_',
+                       name, 'wtest', numberofpages, '.pdf', sep = ''), width = w, height = h)
+      print(plot_out2_2)
+      dev.off()
+    }
+    df <- df[order(df$genes),]
+    gene_sig <- unique(df$genes)
+    if (length(gene_sig) < 20) {
+      plot_out2_fxn(df, "1")
+    } else if (length(gene_sig) > 20 & length(gene_sig) < 41) {
+      new_df <- df[df$genes %in% gene_sig[c(1:20)],]
+      rem_df <- df[df$genes %in% gene_sig[c(21:length(gene_sig))],]
+      plot_out2_fxn(new_df, "1")
+      plot_out2_fxn(rem_df, "2")
+    } else if (length(gene_sig) > 40 & length(gene_sig) < 61) {
+      new_df <- df[df$genes %in% gene_sig[c(1:20)],]
+      new_df2 <- df[df$genes %in% gene_sig[c(21:40)],]
+      rem_df <- df[df$genes %in% gene_sig[c(41:length(gene_sig))],]
+      plot_out2_fxn(new_df, "1")
+      plot_out2_fxn(new_df2, "2")
+      plot_out2_fxn(rem_df, "3")
+    } else if (length(gene_sig) > 60 & length(gene_sig) < 81) {
+      new_df <- df[df$genes %in% gene_sig[c(1:20)],]
+      new_df2 <- df[df$genes %in% gene_sig[c(21:40)],]
+      new_df3 <- df[df$genes %in% gene_sig[c(41:60)],]
+      rem_df <- df[df$genes %in% gene_sig[c(61:length(gene_sig))],]
+      plot_out2_fxn(new_df, "1")
+      plot_out2_fxn(new_df2, "2")
+      plot_out2_fxn(new_df3, "3")
+      plot_out2_fxn(rem_df, "4")
+    } else if (length(gene_sig) > 80 & length(gene_sig) < 101) {
+      new_df <- df[df$genes %in% gene_sig[c(1:20)],]
+      new_df2 <- df[df$genes %in% gene_sig[c(21:40)],]
+      new_df3 <- df[df$genes %in% gene_sig[c(41:60)],]
+      new_df4 <- df[df$genes %in% gene_sig[c(61:80)],]
+      rem_df <- df[df$genes %in% gene_sig[c(81:length(gene_sig))],]
+      plot_out2_fxn(new_df, "1")
+      plot_out2_fxn(new_df2, "2")
+      plot_out2_fxn(new_df3, "3")
+      plot_out2_fxn(new_df4, "4")
+      plot_out2_fxn(rem_df, "5")
+    } else if (length(gene_sig) > 100 & length(gene_sig) < 121) {
+      new_df <- df[df$genes %in% gene_sig[c(1:20)],]
+      new_df2 <- df[df$genes %in% gene_sig[c(21:40)],]
+      new_df3 <- df[df$genes %in% gene_sig[c(41:60)],]
+      new_df4 <- df[df$genes %in% gene_sig[c(61:80)],]
+      new_df5 <- df[df$genes %in% gene_sig[c(81:100)],]
+      rem_df <- df[df$genes %in% gene_sig[c(101:length(gene_sig))],]
+      plot_out2_fxn(new_df, "1")
+      plot_out2_fxn(new_df2, "2")
+      plot_out2_fxn(new_df3, "3")
+      plot_out2_fxn(rem_df4, "4")
+      plot_out2_fxn(rem_df5, "5")
+      plot_out2_fxn(rem_df, "6")
     } else {
       new_df <- df[df$genes %in% gene_sig[c(1:20)],]
       new_df2 <- df[df$genes %in% gene_sig[c(21:40)],]
@@ -671,7 +816,7 @@ ebp_cancers <- function(s_i) {
 # Generate expression heatmap
 ###############################################################################################
 
-exp_hm <- function(cancer_index){
+exp_hm <- function(cancer_index) {
   library(doParallel)
   library(matrixStats)
   library(gplots)
@@ -710,7 +855,7 @@ exp_hm <- function(cancer_index){
     # main=paste("1. Mean -", m),
     Rowv = NA,
     dendrogram = "none",
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     labCol = NA,
     cexRow = fontsize, cexCol = fontsize,
@@ -741,7 +886,7 @@ exp_hm <- function(cancer_index){
     #main=paste("1. Mean -", m),
     Rowv = NA,
     dendrogram = "none",
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     labCol = NA,
     cexRow = fontsize, cexCol = fontsize,
@@ -821,7 +966,7 @@ cor_hm <- function(cancer_index) {
       data.matrix(table_cor),
       #main=paste("1. Mean -", m),
       Rowv = NA,
-      col = redgreen,
+      col = redblue,
       key = key, symkey = skey, keysize = keysize,
       cexRow = fontsize, cexCol = fontsize,
       density.info = "none", trace = "none",
@@ -896,7 +1041,7 @@ cor_hm <- function(cancer_index) {
                     cancer, '(Tumour)')) +
       xlab(master_sign[i]) +
       ylab('mean Hypoxia signature') +
-      theme(text = element_text(size = 12))
+      theme(text = element_text(size = 24))
     plot <- plot  + stat_cor(method = "spearman", label.x.npc = "middle")
     pdf(file = out_dir, width = 6, height = 4)
     
@@ -936,7 +1081,7 @@ cor_hm <- function(cancer_index) {
                     cancer, '(Tumour)')) +
       xlab(master_sign[i]) +
       ylab('mean Hypoxia signature') +
-      theme(text = element_text(size = 12))
+      theme(text = element_text(size = 24))
     plot <- plot  + stat_cor(method = "spearman", label.x.npc = "middle")
     pdf(file = out_dir, width = 6, height = 4)
     print(plot)
@@ -1022,7 +1167,7 @@ cor_mean_hm <- function(mean_cor) {
         #main=paste("1. Mean -", m),
         Rowv = NA, Colv = NA,
         dendrogram = "none",
-        col = redgreen,
+        col = redblue,
         key = key, symkey = skey, keysize = keysize,
         cexRow = fontsize, cexCol = fontsize,
         density.info = "none", trace = "none",
@@ -1044,7 +1189,7 @@ cor_mean_hm <- function(mean_cor) {
         hm <- heatmap.2(
           data.matrix(mat_cor),
           #main=paste("1. Mean -", m),
-          col = redgreen,
+          col = redblue,
           key = key, symkey = skey, keysize = keysize,
           cexRow = fontsize, cexCol = fontsize,
           density.info = "none", trace = "none",
@@ -1113,7 +1258,7 @@ xcell <- function(cancer_index) {
   hm <- heatmap.2(
     data.matrix(xc[[cancer_index]]),
     #main=paste("1. Mean -", m),
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1145,7 +1290,8 @@ xcell <- function(cancer_index) {
   table_pv <- matrix(nrow=nrow(exp_t_master), ncol=nrow(exp_t_sub))
   for(i in 1:nrow(exp_t_master)){
     for(j in 1:nrow(exp_t_sub)){
-      test <- cor.test(as.numeric(exp_t_master[i,]), as.numeric(exp_t_sub[j,]), method='spearman')
+      test <- cor.test(as.numeric(exp_t_master[i,]), 
+                       as.numeric(exp_t_sub[j,]), method = 'spearman')
       table_cor[i,j] <- test$estimate
       table_pv[i,j] <- test$p.value
     }
@@ -1165,7 +1311,7 @@ xcell <- function(cancer_index) {
   hm <- heatmap.2(
     data.matrix(table_cor),
     #main=paste("1. Mean -", m),
-    col=redgreen,
+    col=redblue,
     key=key, symkey=skey, keysize=keysize,
     cexRow=fontsize, cexCol=fontsize,
     density.info="none", trace="none",
@@ -1178,7 +1324,7 @@ xcell <- function(cancer_index) {
     data.matrix(table_cor),
     #main=paste("1. Mean -", m),
     Rowv=F, Colv=F,
-    col=redgreen,
+    col=redblue,
     key=key, symkey=skey, keysize=keysize,
     cexRow=fontsize, cexCol=fontsize,
     density.info="none", trace="none",
@@ -1262,7 +1408,7 @@ xcell <- function(cancer_index) {
     data.matrix(table_cor),
     #main=paste("1. Mean -", m),
     Rowv = F, Colv = F,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1278,7 +1424,7 @@ xcell <- function(cancer_index) {
     data.matrix(table_cor),
     #main=paste("1. Mean -", m),
     Rowv = F, Colv = F,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1338,7 +1484,7 @@ xcell <- function(cancer_index) {
   hm <- heatmap.2(
     data.matrix(table_cor),
     #main=paste("1. Mean -", m),
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1353,7 +1499,7 @@ xcell <- function(cancer_index) {
     data.matrix(table_cor),
     #main=paste("1. Mean -", m),
     Rowv = F, Colv = F,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1463,7 +1609,7 @@ xcell_all <- function(xc_out) {
   hm <- heatmap.2(
     score_means,
     #main=paste("1. Mean -", m),
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1485,7 +1631,7 @@ xcell_all <- function(xc_out) {
                    '.pdf', sep = ''), width = 6, height = 18)
   hm <- heatmap.2(
     score_means,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1499,7 +1645,7 @@ xcell_all <- function(xc_out) {
     score_means,
     #main=paste("1. Mean -", m),
     Rowv = F, Colv = F,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1523,7 +1669,7 @@ xcell_all <- function(xc_out) {
   hm <- heatmap.2(
     score_means,
     #main=paste("1. Mean -", m),
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1537,7 +1683,7 @@ xcell_all <- function(xc_out) {
     score_means,
     #main=paste("1. Mean -", m),
     Rowv = F, Colv = F,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1560,7 +1706,7 @@ xcell_all <- function(xc_out) {
                    '.pdf', sep = ''), width = 6, height = 18)
   hm <- heatmap.2(
     score_means,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1574,7 +1720,7 @@ xcell_all <- function(xc_out) {
     score_means,
     #main=paste("1. Mean -", m),
     Rowv = F, Colv = F,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1598,7 +1744,7 @@ xcell_all <- function(xc_out) {
                    '.pdf', sep = ''), width = 6, height = 18)
   hm <- heatmap.2(
     score_means,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1612,7 +1758,7 @@ xcell_all <- function(xc_out) {
     score_means,
     #main=paste("1. Mean -", m),
     Rowv = F, Colv = F,
-    col = redgreen,
+    col = redblue,
     key = key, symkey = skey, keysize = keysize,
     cexRow = fontsize, cexCol = fontsize,
     density.info = "none", trace = "none",
@@ -1736,7 +1882,7 @@ hm_master <- function(master_index) {
     hm <- heatmap.2(
       mat.cor.filtered,
       Rowv = F, Colv = F,
-      col = redgreen,
+      col = redblue,
       key = key, symkey = skey, keysize = keysize,
       cexRow = fontsize, cexCol = fontsize,
       density.info = "none", trace = "none",
@@ -1751,7 +1897,7 @@ hm_master <- function(master_index) {
     hm <- heatmap.2(
       mat.cor.filtered,
       Colv = F,
-      col = redgreen,
+      col = redblue,
       key = key, symkey = skey, keysize = keysize,
       cexRow = fontsize, cexCol = fontsize,
       density.info = "none", trace = "none",
@@ -1765,7 +1911,7 @@ hm_master <- function(master_index) {
                      this.gene, '_', sig_names[i], '.pdf', sep = ''), width = 6, height = 18)
     hm <- heatmap.2(
       mat.cor.filtered,
-      col = redgreen,
+      col = redblue,
       key = key, symkey = skey, keysize = keysize,
       cexRow = fontsize, cexCol = fontsize,
       density.info = "none", trace = "none",
@@ -1969,10 +2115,10 @@ library(ppcor)
 thr_sig <- 0.05
 
 # Threshold for xCell inclusion (xCell enrichment)
-thr_xc <- 0.2
+thr_xc <- 0.1
 
 # Threshold for xCell inclusion (% of samples enriched)
-thr_xc_s <- 0.2
+thr_xc_s <- 0.1
 
 # Minimum proportion of non-NA samples
 thr_na <- 0.8
@@ -2142,7 +2288,7 @@ hm <- heatmap.2(
   xlab = 'Cancers',
   main = 'Spearman Correlation (partial to xCell)',
   dendrogram = "none", density.info = "none", trace = "none",
-  col = redgreen,
+  col = redblue,
   breaks = seq(-1, 1, length.out = 101),
   margins = c(7,7)
 )
@@ -2155,7 +2301,7 @@ hm <- heatmap.2(
   xlab = 'Cancers',
   main = 'Spearman Correlation',
   dendrogram = "none", density.info = "none", trace = "none",
-  col = redgreen,
+  col = redblue,
   breaks = seq(-1, 1, length.out = 101),
   margins = c(7,7)
 )
@@ -2168,7 +2314,7 @@ hm <- heatmap.2(
   xlab = 'Cancers',
   main = 'Differential (log10)',
   dendrogram = "none", density.info = "none", trace = "none",
-  col = redgreen,
+  col = redblue,
   breaks = seq(-1, 1, length.out = 101),
   margins = c(7,7)
 )
@@ -2241,7 +2387,7 @@ for (c in cancers) {
     main = c,
     Rowv = NA, Colv = NA,
     dendrogram = "none",
-    col = redgreen,
+    col = redblue,
     margins = c(8,8),
     density.info = "none", trace = "none",
     breaks = seq(-1, 1, length.out = 101)
