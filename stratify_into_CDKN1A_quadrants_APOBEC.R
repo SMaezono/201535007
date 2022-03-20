@@ -1,7 +1,7 @@
 # Sakura Maezono # Date created: 
 # Purpose: 
-# stratify samples into hypoxia quadrants
-# make a violin plot with x-axis as the hypoxia quadrants
+# stratify samples into CDKN1A quadrants
+# make a violin plot with x-axis as the CDKN1A quadrants
 # and y-axis is APOBEC expression
 
 
@@ -23,10 +23,10 @@ library(EnvStats)
 
 # create folder(s) if it doesn't/ they don't exist
 
-dir.create("G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/")
+dir.create("G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/")
 
 # Set working directory
-root <- "G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/"
+root <- "G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/"
 setwd(root)
 
 # Directory: parameters
@@ -36,32 +36,35 @@ dir_p <- 'G:/My Drive/Jiachen Files/data/'
 dir_e <- 'G:/My Drive/Jiachen Files/GDAC/'
 
 
-# APOBEC and hypoxia genes
+# APOBEC and CDKN1A genes
 dir_ext <- "G:/My Drive/Jiachen Files/"
 apo.genes <- as.character(read.table(file = paste(dir_ext, 
                                                   "data/tr_a.txt", sep = ""),
                                      sep = "\t", header = TRUE, 
                                      row.names = 1)$Gene.Symbol)
 apo.genes <- apo.genes[order(apo.genes)]
-hyp.genes <- as.character(read.table(file = paste(dir_ext,
-                                                  "data/tr_h.txt", sep = ""),
-                                     sep = "\t", header = TRUE, 
-                                     row.names = 1)$Gene.Symbol)
+# hyp.genes <- as.character(read.table(file = paste(dir_ext,
+#                                                   "data/tr_h.txt", sep = ""),
+#                                      sep = "\t", header = TRUE, 
+#                                      row.names = 1)$Gene.Symbol)
+
+p21.genes <- "CDKN1A"
+
 # Minimum proportion of non-NA samples
 thr_na <- 0.8
 
 # "t" for tumour data and "n" for normal data
 state <- "t"
 
-dir.create("G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/Buffa 52/")
-dir.create("G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/APOBEC/")
+dir.create("G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/Buffa 52/")
+dir.create("G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/APOBEC/")
 if (state == "t") {
 
-  dir.create("G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/Buffa 52/tumour/")
-  dir.create("G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/APOBEC/tumour/")
+  dir.create("G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/Buffa 52/tumour/")
+  dir.create("G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/APOBEC/tumour/")
 } else {
-  dir.create("G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/Buffa 52/normal/")
-  dir.create("G:/My Drive/Jiachen Files/Sakura/Hypoxia_APOBEC_Stratification/APOBEC/normal/")
+  dir.create("G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/Buffa 52/normal/")
+  dir.create("G:/My Drive/Jiachen Files/Sakura/CDKN1A_APOBEC_Stratification/APOBEC/normal/")
 }
 
 # Restrict to A3 family?
@@ -69,7 +72,7 @@ restrict <- TRUE
 
 # Cancer list
 cancers <- as.character(read.table(paste(dir_p, 
-                                         'cancer_list.txt',
+                                         'cancer_list (ALL cancers).txt',
                                          sep = ''),
                                    header = T, sep = '\t')[,1])
 
@@ -108,20 +111,20 @@ import_cancer_exp <- function(cancer, state) {
   }
   colnames(exp) <- names
   # output <- data.frame(output)
-  # hypoxia genes only in order
-  hyp_t <- as.matrix(output[hyp.genes,])
+  # CDKN1A genes only in order
+  p21_t <- as.matrix(output[p21.genes,])
   # # remove rows that only have NAs
-  # hyp_t <- rm_onlyNArow(hyp_t)
+  # p21_t <- rm_onlyNArow(p21_t)
   na_filter <-
-    (rowCounts(!is.na(hyp_t))/ncol(hyp_t) >= thr_na)
-  hyp_t <- hyp_t[na_filter,]
+    (rowCounts(!is.na(p21_t))/ncol(p21_t) >= thr_na)
+  p21_t <- p21_t[na_filter,]
   
   # # Replace NA by median of gene
-  # med_t <- rowMedians(hyp_t, na.rm = T)
-  # for (i in 1:nrow(hyp_t)) {
-  #   for (j in 1:ncol(hyp_t)) {
-  #     if (is.na(hyp_t[i,j])) {
-  #       hyp_t[i,j] <- med_t[i]
+  # med_t <- rowMedians(p21_t, na.rm = T)
+  # for (i in 1:nrow(p21_t)) {
+  #   for (j in 1:ncol(p21_t)) {
+  #     if (is.na(p21_t[i,j])) {
+  #       p21_t[i,j] <- med_t[i]
   #     }
   #   }
   # }
@@ -151,15 +154,11 @@ import_cancer_exp <- function(cancer, state) {
   # }
   
   # matrices of mean & median scores for every patient
-  # hypoxia gene sig
-  hyp_t <- t(hyp_t)
-  hyp_metrics <- matrix(nrow = length(hyp_t[,1]), ncol = 2 )
-  rownames(hyp_metrics) <- rownames(hyp_t)
-  colnames(hyp_metrics) <- c("Mean", "Median")
-  hyp_metrics[,1] <- rowMeans(as.matrix(hyp_t), na.rm=T)
-  hyp_metrics[,2] <- rowMedians(as.matrix(hyp_t), na.rm=T)
-  # reorder by mean
-  hyp_metrics <- hyp_metrics[order(hyp_metrics[,1]),]
+  # CDKN1A gene sig
+  hyp_metrics <- as.matrix(p21_t)
+  colnames(hyp_metrics) <- p21.genes
+
+
   # APOBEC gene sig
   input_t <- t(input_t)
   apo_metrics <- matrix(nrow = length(input_t[,1]), ncol = 2 )
@@ -173,7 +172,7 @@ import_cancer_exp <- function(cancer, state) {
   # Output_all, mean and median of gene sig dor each patient
   write.table(hyp_metrics, 
               file = paste(cancer, state,
-                           'meanormedian_of_hypoxia_genes.txt', 
+                           'exp_CDKN1A_genes.txt', 
                            sep = '_'), sep = '\t')
   
   # Output_all, mean and median of gene sig dor each patient
@@ -182,25 +181,26 @@ import_cancer_exp <- function(cancer, state) {
                            '_meanormedian_of_APOBEC_genes.txt', 
                            sep = '_'), sep = '\t')
   # reorder based on median lowest to highest
-  hyp_metrics_med <- hyp_metrics[order(hyp_metrics[,2]),]
+  hyp_metrics_med <- data.frame(hyp_metrics[order(hyp_metrics[,1]),])
+  colnames(hyp_metrics_med) <- "CDKN1A"
   apo_metrics_med <- apo_metrics[order(apo_metrics[,2]),]
   
-  cancer_output <- list(data.frame(hyp_metrics[,1]), 
-                        data.frame(hyp_metrics_med[,2]),
+  cancer_output <- list(hyp_metrics_med, 
+                        hyp_metrics_med,
                         data.frame(apo_metrics[,1]),
                         data.frame(apo_metrics_med[,2]),
-                        data.frame(hyp_t), data.frame(input_t))
+                        data.frame(p21_t), data.frame(input_t))
   return(cancer_output)
 }
 
-Strat_APOBEC_Hypoxia_plot <- function(cancer) {
+Strat_APOBEC_CDKN1A_plot <- function(cancer) {
   # stratify into quartiles (x-axis of the violin plot)
   # graph using a violin plot
   cancer_output <- import_cancer_exp(cancer, state)
   sep_by_quartiles <- function(which_sig) {
     # stratify into quartiles 
     # which_sig becomes x-axis of the violin plot 
-    if (which_sig == "hypoxia") {
+    if (which_sig == "CDKN1A") {
       mean <- cbind(rownames(cancer_output[[1]]), cancer_output[[1]])
       median <- cbind(rownames(cancer_output[[2]]), cancer_output[[2]])
       
@@ -216,12 +216,12 @@ Strat_APOBEC_Hypoxia_plot <- function(cancer) {
                 "sample ids were used for the top, upper-middle, lower-middle,",
                 "or bottom group based on", which_sig, "gene sig score", "in", cancer,
                 sep = " "))
-    top_mean <- data.frame(mean[order(mean[,2], decreasing = TRUE),])
+    top_mean <- data.frame(mean[order(mean[,1], decreasing = TRUE),])
     
     top_mean_25 <- data.frame(top_mean[1:quartile_n,]) 
     top_mean_patients <- as.character(top_mean_25[,1])
     
-    top_median <- data.frame(median[order(median[,2], 
+    top_median <- data.frame(median[order(median[,1], 
                                           decreasing = TRUE),])
     top_median_25 <- data.frame(top_median[1:quartile_n,]) 
     top_median_patients <- as.character(top_median_25[,1])
@@ -233,12 +233,12 @@ Strat_APOBEC_Hypoxia_plot <- function(cancer) {
     upper_mid_median_patients <- as.character(upper_mid_median[,1])
 
     
-    bottom_mean <- data.frame(mean[order(mean[,2],
+    bottom_mean <- data.frame(mean[order(mean[,1],
                                       decreasing = FALSE),])
     bottom_mean_25 <- data.frame(bottom_mean[1:quartile_n,]) 
     bottom_mean_patients <- as.character(bottom_mean_25[,1])
     
-    bottom_median <- data.frame(median[order(median[,2], 
+    bottom_median <- data.frame(median[order(median[,1], 
                                           decreasing = FALSE),])
     bottom_median_25 <- data.frame(bottom_median[1:quartile_n,]) 
     bottom_median_patients <- as.character(bottom_median_25[,1])
@@ -252,7 +252,7 @@ Strat_APOBEC_Hypoxia_plot <- function(cancer) {
     # take the values of the other gene signature for their gene expressions
     # this should be the values for y-axis
     
-    if (which_sig == "hypoxia") {
+    if (which_sig == "CDKN1A") {
       exp_mean <- cbind(rownames(cancer_output[[3]]), cancer_output[[3]])
       exp_median <- cbind(rownames(cancer_output[[4]]), cancer_output[[4]])
       exp_indiv_gene <- cbind(rownames(cancer_output[[6]]), cancer_output[[6]])
@@ -311,7 +311,7 @@ Strat_APOBEC_Hypoxia_plot <- function(cancer) {
       
       final_df_graph <- rbind(bottom_exp, lower_mid_exp, 
                               upper_mid_exp, top_exp)
-      if (which_sig == "hypoxia") {
+      if (which_sig == "CDKN1A") {
         folder_name <- "Buffa 52"
       } else if (which_sig == "apobec") {
         folder_name <- "APOBEC"
@@ -334,7 +334,7 @@ Strat_APOBEC_Hypoxia_plot <- function(cancer) {
     return(listofdfs)
   }
   
-  hypoxia_quartiles <- sep_by_quartiles("hypoxia")
+  CDKN1A_quartiles <- sep_by_quartiles("CDKN1A")
   
   apobec_quartiles <- sep_by_quartiles("apobec")
   
@@ -342,28 +342,28 @@ Strat_APOBEC_Hypoxia_plot <- function(cancer) {
     # Violin plots with box plots inside
     # which_gene == c("mean", "median", "APOBEC3A", etc)
     # apobec_quartiles[[1]], apobec_quartiles[[2]])
-    # filename <- c("hypoxia_quartile_mean_apobec_exp",
-    # "hypoxia_quartile_median_apobec_exp", 
-    # "apobec_quartile_mean_hypoxia_exp",
-    # "apobec_quartile_median_hypoxia_exp")
+    # filename <- c("CDKN1A_quartile_mean_apobec_exp",
+    # "CDKN1A_quartile_median_apobec_exp", 
+    # "apobec_quartile_mean_CDKN1A_exp",
+    # "apobec_quartile_median_CDKN1A_exp")
     
     my_comparisons <- list(c("top", "upper-mid"),c("upper-mid", "lower-mid"),
                            c("top", "lower-mid"), c("lower-mid", "bottom"), 
                            c("upper-mid", "bottom"), c("top", "bottom"))
-    if (x_label == "Hypoxia" & quadrant_metric == "mean") {
-      df <- hypoxia_quartiles[[1]][hypoxia_quartiles[[1]]$variable == which_gene,]
-    } else if (x_label == "Hypoxia" & quadrant_metric == "median") {
-      df <- hypoxia_quartiles[[2]][hypoxia_quartiles[[2]]$variable == which_gene,]
+    if (x_label == "CDKN1A" & quadrant_metric == "mean") {
+      df <- CDKN1A_quartiles[[1]][CDKN1A_quartiles[[1]]$variable == which_gene,]
+    } else if (x_label == "CDKN1A" & quadrant_metric == "median") {
+      df <- CDKN1A_quartiles[[2]][CDKN1A_quartiles[[2]]$variable == which_gene,]
     } else if (x_label == "APOBECs" & quadrant_metric == "mean") {
       df <- apobec_quartiles[[1]][apobec_quartiles[[1]]$variable == which_gene,]
     } else if (x_label == "APOBECs" & quadrant_metric == "median") {
       df <- apobec_quartiles[[2]][apobec_quartiles[[2]]$variable == which_gene,]
     }
     
-    if (x_label == "Hypoxia") {
+    if (x_label == "CDKN1A") {
       y_label_new <- paste( "APOBEC (", which_gene, ")", sep = "")
     } else {
-        y_label_new <- paste( "Hypoxia (", which_gene, ")", sep = "")
+        y_label_new <- paste( "CDKN1A (", which_gene, ")", sep = "")
     }
     
     plot <- ggviolin(df, x = "Quartile", y = "value", fill = "Quartile",
@@ -382,39 +382,39 @@ Strat_APOBEC_Hypoxia_plot <- function(cancer) {
     dev.off()
   }
   
-  # hypoxia quartiles, mean 
-  violin_plot("mean", "hypoxia_quartile_mean_apobec_exp", 
-              "Hypoxia", "mean")
-  # hypoxia quartiles, median 
-  violin_plot("median", "hypoxia_quartile_mean_apobec_exp",
-                         "Hypoxia", "median")
+  # CDKN1A quartiles, mean 
+  violin_plot("mean", "CDKN1A_quartile_mean_apobec_exp", 
+              "CDKN1A", "mean")
+  # CDKN1A quartiles, median 
+  violin_plot("median", "CDKN1A_quartile_mean_apobec_exp",
+                         "CDKN1A", "median")
   # apobec quartiles, mean 
-  violin_plot("mean", "apobec_quartile_mean_hypoxia_exp",
+  violin_plot("mean", "apobec_quartile_mean_CDKN1A_exp",
               "APOBECs", "mean")
   # apobec quartiles, median 
-  violin_plot("median", "apobec_quartile_mean_hypoxia_exp", 
+  violin_plot("median", "apobec_quartile_mean_CDKN1A_exp", 
               "APOBECs", "median")
   
   plot_ind_hyp_genes <- function(which_gene) {
-    violin_plot(which_gene, "hypoxia_quartile_mean_apobec_exp", 
-                "Hypoxia", "mean")
-    violin_plot(which_gene, "hypoxia_quartile_mean_apobec_exp", 
-                "Hypoxia", "median")
+    violin_plot(which_gene, "CDKN1A_quartile_mean_apobec_exp", 
+                "CDKN1A", "mean")
+    violin_plot(which_gene, "CDKN1A_quartile_mean_apobec_exp", 
+                "CDKN1A", "median")
     print(paste("plotted violin graphs for", which_gene, sep = " "))
   }
   lapply(colnames(cancer_output[[6]]), plot_ind_hyp_genes)
   
   plot_ind_APOBEC_genes <- function(which_gene) {
-    violin_plot(which_gene, "apobec_quartile_mean_hypoxia_exp",
+    violin_plot(which_gene, "apobec_quartile_mean_CDKN1A_exp",
                 "APOBECs", "mean")
-    violin_plot(which_gene, "apobec_quartile_median_hypoxia_exp",
+    violin_plot(which_gene, "apobec_quartile_median_CDKN1A_exp",
                 "APOBECs", "median")
     print(paste("plotted violin graphs for", which_gene, sep = " "))
   }
   lapply(colnames(cancer_output[[5]]), plot_ind_APOBEC_genes)
 }
 
-lapply(cancers, Strat_APOBEC_Hypoxia_plot)
+lapply(cancers, Strat_APOBEC_CDKN1A_plot)
 
 
 root <- "G:/My Drive/Jiachen Files/codes_supp/"
@@ -422,7 +422,7 @@ setwd(root)
 gc()
 
 # save details of this R script
-scriptname <- "strat_into_Hypoxia_quadrants_APOBEC_exp"
+scriptname <- "strat_into_CDKN1A_quadrants_APOBEC_exp"
 savehistory(file = paste(scriptname, ".Rhistory", sep = ""))
 sink(file = paste(Sys.Date(), scriptname, ".txt", sep = ""),
      type = c("output", "message"))
@@ -431,7 +431,7 @@ print(sessionInfo())
 sink(NULL)
 
 # save globalenv/workspace
-save.image("strat_into_Hypoxia_quadrants_APOBEC_exp.Rdata")  
+save.image("strat_into_CDKN1A_quadrants_APOBEC_exp.Rdata")  
 
 
   
